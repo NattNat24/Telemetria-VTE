@@ -1,0 +1,46 @@
+
+#include <ESP8266WiFi.h>
+#include <ThingSpeak.h>
+
+
+const char* ssid = "SOMOS-MIGUEL";             // Reemplaza con tu SSID de Wi-Fi
+const char* password = "Kore2407";     
+unsigned long canalID = 2658443;    
+const char* apiKey = "TE1MLSH976EZ8E5O";        
+
+WiFiClient client;
+
+int sensorPin = 34; // Pin analógico al que está conectado la salida del sensor
+
+void setup() {
+    Serial.begin(9600);
+    WiFi.begin(ssid, password);
+
+    // Conectar a la red Wi-Fi
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(1000);
+        Serial.println("Conectando a WiFi...");
+    }
+    Serial.println("Conectado a WiFi");
+    
+    // Inicializar ThingSpeak
+    ThingSpeak.begin(client);
+}
+
+void loop() {
+    // Leer el voltaje desde el sensor
+    float voltaje = (float)25 * analogRead(sensorPin) / 4095; // Resolución ADC de ESP32 es de 12 bits (0-4095)
+    Serial.print("Voltaje medio = ");
+    Serial.println(voltaje);
+    
+    // Enviar el voltaje a ThingSpeak
+    ThingSpeak.setField(1, voltaje);
+    int x = ThingSpeak.writeFields(canalID, apiKey);
+    if (x == 200) {
+        Serial.println("Actualización exitosa.");
+    } else {
+        Serial.println("Error al actualizar.");
+    }
+    
+    delay(15000);  // ThingSpeak permite una actualización cada 15 segundos
+}
