@@ -5,6 +5,7 @@
 #include <ArduinoJson.h>
 #include <TinyGPS++.h>
 #include "WiFi.h"
+#include <SoftwareSerial.h>
 
 #define RXD2 16
 #define TXD2 17
@@ -13,7 +14,7 @@
 // put function declarations here:
 
 TinyGPSPlus gps;
-HardwareSerial gpsSerial(2);
+SoftwareSerial gpsSerial(RXD2, TXD2);
 
 /**
  * Para modificar la conexion a internet ir al archivo secrets.hpp
@@ -89,16 +90,19 @@ void setup()
 {
   Serial.begin(MONITOR_SPEED);
   // Start Serial 2 with the defined RX and TX pins and a baud rate of 9600
-  gpsSerial.begin(MONITOR_SPEED, SERIAL_8N1, RXD2, TXD2);
+  gpsSerial.begin(MONITOR_SPEED);
   connectAWS();
 }
 
 void loop()
 {
+  Serial.println("Entrando a loop");
   while (gpsSerial.available() > 0)
   {
     gps.encode(gpsSerial.read());
+    Serial.println("Entre aqui a gpsSerialAvailable");
   }
+  Serial.println("Pude salir de gpsSerial loop");
 
   if (gps.location.isUpdated())
   {
@@ -116,6 +120,6 @@ void loop()
     publishMesssage(speed, lat, lng);
     client.loop();
   }
-
+  Serial.println("Finalize por aqui, antes de delay");
   delay(1000);
 }
