@@ -1,0 +1,134 @@
+#include <WiFi.h>
+#include <WiFiUDP.h>
+#include <HTTPClient.h>
+
+const char *ssid = "POCO F5 Pro";
+const char *password = "necesitados";
+
+WiFiUDP udp;
+HTTPClient http;
+
+unsigned int localUdpPort = 12345; // Puerto en el que escuchará el ESP32
+char incomingPacket[255];          // Buffer para almacenar los datos recibidos
+String raspberryIP;
+String serverPath;
+
+void setup()
+{
+    Serial.begin(115200);
+    Serial.println();
+
+    // Conectar al WiFi
+    Serial.print("Conectando a ");
+    Serial.println(ssid);
+    WiFi.begin(ssid, password);
+
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(1000);
+        Serial.print(".");
+    }
+
+    Serial.println("");
+    Serial.println("Conectado al WiFi");
+
+    // Mostrar IP del ESP32
+    Serial.print("Dirección IP: ");
+    Serial.println(WiFi.localIP());
+
+    // Iniciar la escucha UDP
+    udp.begin(localUdpPort);
+    Serial.printf("Escuchando en UDP, puerto %d\n", localUdpPort);
+}
+
+void loop()
+{
+    // Conseguir la ip del raspberry a traves de udp
+    if (raspberryIP == "")
+    {
+        // Verificar si hay paquetes UDP entrantes
+        int packetSize = udp.parsePacket();
+        if (packetSize)
+        {
+            // Recibir el paquete UDP
+            int len = udp.read(incomingPacket, 255);
+            if (len > 0)
+            {
+                incomingPacket[len] = 0; // Terminar el string
+            }
+
+            // Mostrar detalles del paquete
+            // Serial.printf("Paquete UDP recibido desde IP %s, puerto %d\n", udp.remoteIP().toString().c_str(), udp.remotePort());
+            // Serial.printf("Tamaño del paquete: %d\n", packetSize);
+            // Serial.printf("Paquete: %s\n", incomingPacket);
+
+            // El paquete debe tener la convencion RASPBERRY-IP
+            // Verificar si contiene "RASPBERRY-"
+            if (strstr(incomingPacket, "RASPBERRY-") != nullptr)
+            {
+                raspberryIP = udp.remoteIP().toString().c_str();
+                serverPath = "http://" + raspberryIP + ":8000";
+                Serial.println(raspberryIP);
+                udp.stop();
+
+                http.begin(serverPath + "/connected");
+                // Send HTTP GET request
+                int httpResponseCode = http.GET();
+
+                http.end(); // Free resources
+                Serial.println("Señal de Connected Enviada, HTTPResponseCode:");
+            }
+            else
+            {
+                Serial.println("El texto NO contiene 'RASPBERRY-'");
+            }
+        }
+    }
+    else
+    {
+        // Ya tenemos la ip del rapsberry aqui podemos sensar y enviar por http los datos al server del raspberry
+        // Codigo de medicion de sensores AQUI !!
+        //SENSOR ULTRASÓNICO 
+        // Definir pines para el Trig y Echo
+        const int trigPin = 9;
+        const int echoPin = 10;
+        
+        void setup() {
+          // Configurar el pin Trig como salida
+          pinMode(trigPin, OUTPUT);
+          // Configurar el pin Echo como entrada
+          pinMode(echoPin, INPUT);
+          // Iniciar la comunicación serial
+          Serial.begin(9600);
+        }
+        
+        void loop() {
+          // Enviar un pulso de 10 µs al Trig para iniciar la medición
+          digitalWrite(trigPin, LOW);
+          delayMicroseconds(2);
+          digitalWrite(trigPin, HIGH);
+          delayMicroseconds(10);
+          digitalWrite(trigPin, LOW);
+        
+          // Leer el tiempo que tarda en recibir el eco
+          long duration = pulseIn(echoPin, HIGH);
+        
+          // Calcular la distancia en centímetros
+          long distance = duration * 0.034 / 2;
+        
+          // Imprimir la distancia en el monitor serial
+          Serial.print("Distancia: ");
+          Serial.print(distance);
+          Serial.println(" cm");
+        
+          // Pequeño retraso antes de la próxima medición
+          delay(500);
+        }
+        // Peticion para enviar los datos al raspberry
+        //  http.begin(serverPath + "/sensor?temp=valor&sensor2=valor&sensor3=valor");
+        //     // Send HTTP GET request
+        //     int httpResponseCode = http.GET();
+
+        //     http.end(); // Free resources
+    }
+}
