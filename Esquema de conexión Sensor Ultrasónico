@@ -1,0 +1,6 @@
+HC-SR04       Arduino Uno
+-------------------------
+VCC    --->    5V
+GND    --->    GND
+Trig   --->    Pin 9
+Echo   --->    Pin 10
