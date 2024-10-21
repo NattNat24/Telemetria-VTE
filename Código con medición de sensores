@@ -123,6 +123,54 @@ void loop()
         
           // Pequeño retraso antes de la próxima medición
           delay(500);
+          // SENSOR DE VELOCIDAD
+
+            // Variables para el sensor de efecto Hall y el cálculo de velocidad
+                volatile int pulseCount = 0;
+                unsigned long lastTime = 0;
+                float wheelCircumference = 0.1256637061; // Circunferencia de la rueda delantera en metros 
+                unsigned long lastPulseTime = 0;
+                float speed = 0; // Velocidad en m/s
+                
+                void setup() {
+                  // Configuración del puerto serial para mostrar la velocidad
+                  Serial.begin(9600);
+                  
+                  // Configuración del pin del sensor de efecto Hall
+                  pinMode(2, INPUT_PULLUP);
+                  
+                  // Asignar interrupción al pin 2 (sensor de efecto Hall)
+                  attachInterrupt(digitalPinToInterrupt(2), countPulse, FALLING);
+                }
+                
+                void loop() {
+                  // Calcular la velocidad si hay pulsos
+                  if (pulseCount > 0) {
+                    // Obtener el tiempo actual
+                    unsigned long currentTime = millis();
+                    
+                    // Calcular el tiempo transcurrido desde el último pulso
+                    unsigned long timeElapsed = currentTime - lastPulseTime;
+                    
+                    // Calcular la velocidad (velocidad = distancia / tiempo)
+                    speed = (wheelCircumference / timeElapsed) * 1000; // Convertir de ms a s
+                    
+                    // Mostrar la velocidad en m/s
+                    Serial.print("Velocidad: ");
+                    Serial.print(speed);
+                    Serial.println(" m/s");
+                    
+                    // Reiniciar el contador de pulsos y actualizar el tiempo del último pulso
+                    pulseCount = 0;
+                    lastPulseTime = currentTime;
+                  }
+                }
+                
+                // Función de interrupción que cuenta los pulsos
+                void countPulse() {
+                  pulseCount++;
+                }
+
         }
         // Peticion para enviar los datos al raspberry
         //  http.begin(serverPath + "/sensor?temp=valor&sensor2=valor&sensor3=valor");
