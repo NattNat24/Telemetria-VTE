@@ -1,0 +1,64 @@
+import spidev
+import time
+
+# Configuración del ADC (MCP3008)
+spi = spidev.SpiDev()
+spi.open(0, 0)  # Chip Select 0 (C0)
+spi.max_speed_hz = 1350000
+
+# Sensibilidad del sensor (V/A)
+sensibilidad = 0.185  
+offset = 0.1  # Offset para la amplitud del ruido
+
+def read_channel(channel):
+    """Lee un canal del MCP3008 y devuelve el valor de 10 bits."""
+    adc = spi.xfer2([1, (8 + channel) << 4, 0])
+    return ((adc[1] & 3) << 8) + adc[2]
+
+def get_voltage(n_muestras=10000):
+    """Obtiene el voltaje promedio del sensor."""
+    voltage = 0
+    for _ in range(n_muestras):
+        voltage += read_channel(0) * (5.0 / 1023.0)  # Escala a voltios
+    return voltage / n_muestras
+
+def get_current(n_muestras=200):
+    """Obtiene la corriente promedio del sensor."""
+    corriente = 0
+    for _ in range(n_muestras):
+        voltaje_sensor = read_channel(0) * (5.0 / 1023.0)  # Escala a voltios
+        corriente += (voltaje_sensor - 2.5) / sensibilidad  # Ecuación para obtener la corriente
+    return corriente / n_muestras
+
+def get_peak_current():
+    """Obtiene la corriente pico."""
+    corriente_max = 0
+    corriente_min = float('inf')
+    tiempo_inicio = time.time()
+    corriente = 0
+
+    while time.time() - tiempo_inicio < 0.5:  # Realiza mediciones durante 0.5 segundos
+        voltaje_sensor = read_channel(0) * (5.0 / 1023.0)  # Lectura del sensor
+        corriente = 0.9 * corriente + 0.1 * ((voltaje_sensor - 2.5) / sensibilidad)  # Ecuación para obtener la corriente
+
+        if corriente > corriente_max:
+            corriente_max = corriente
+        if corriente < corriente_min:
+            corriente_min = corriente
+
+    return ((corriente_max - corriente_min) / 2) - offset
+
+try:
+    while True:
+        Ip = get_peak_current()  # Obtener la corriente pico
+        Irms = Ip * 0.707  # Intensidad RMS
+        P = Irms * 220.0  # Potencia en watts
+
+        print(f"Ip: {Ip:.3f} A, Irms: {Irms:.3f} A, Potencia: {P:.3f} W")
+        time.sleep(0.5)
+
+except KeyboardInterrupt:
+    print("Terminando la lectura.")
+finally:
+    spi.close()
+
