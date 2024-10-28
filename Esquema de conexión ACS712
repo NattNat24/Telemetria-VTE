@@ -1,0 +1,6 @@
+   Raspberry Pi 4          ACS712
+   ----------------          -------
+   GPIO 17 (Pin X) -----> OUT (Salida de corriente)
+   5V (Pin X)     ------> VCC (Alimentación)
+   GND (Pin X)    ------> GND (Tierra)
+Revisar pines que quedan para la alimentación y tierra 
